@@ -28,12 +28,26 @@ except ImportError:
     exit(1)
 
 
-def get_db_engine() -> Optional[Engine]:
-    """Crée et retourne un engine SQLAlchemy en utilisant les settings de l'application."""
-    database_url = settings.DATABASE_URL
+def get_db_engine(custom_settings=None) -> Optional[Engine]:
+    """
+    Crée et retourne un engine SQLAlchemy en utilisant les settings de l'application.
     
-    if not database_url:
-        logger.error("❌ Erreur: DATABASE_URL n'est pas configuré dans vos settings (vérifiez le fichier .env).")
+    Args:
+        custom_settings: Instance de Settings personnalisée (optionnel).
+                        Si None, utilise les settings globaux.
+    """
+    # Utiliser les settings personnalisés si fournis, sinon les settings globaux
+    from app.core.config import settings as default_settings
+    active_settings = custom_settings if custom_settings else default_settings
+    
+    database_url = active_settings.get_database_url()
+    
+    if not database_url or database_url == "sqlite:///:memory:":
+        logger.error("❌ Erreur: DATABASE_URL n'est pas configuré.")
+        logger.error("💡 Options de configuration disponibles :")
+        logger.error("   1. Arguments CLI : --database-url ou --db-host, --db-user, --db-name")
+        logger.error("   2. Variables d'environnement : DATABASE_URL ou DB_HOST, DB_USER, DB_NAME")
+        logger.error("   3. Fichier .env : Créez un fichier .env à la racine du projet")
         return None
         
     logger.info(f"Connexion à la base de données via: {database_url}")
@@ -121,11 +135,64 @@ def drop_table(engine: Engine, table_name: str):
     else:
         logger.info("Opération annulée.")
 
-if __name__ == "__main__":
+def main():
+    """Point d'entrée principal de la commande analyze-db."""
     parser = argparse.ArgumentParser(
-        description="Inspecteur de base de données pour l'application Eduka.",
+        description="Inspecteur de base de données - Analyse et inspection de bases de données.",
         formatter_class=argparse.RawTextHelpFormatter
     )
+    
+    # --- Arguments de configuration de la base de données ---
+    config_group = parser.add_argument_group(
+        'Configuration de la base de données',
+        'Ces options permettent de configurer la connexion directement en CLI.\n'
+        'Priorité : Arguments CLI > Variables d\'environnement > Fichier .env > Défaut'
+    )
+    config_group.add_argument(
+        "--database-url", "--db-url", "-u",
+        type=str,
+        metavar="URL",
+        help="URL complète de la base de données (ex: postgresql://user:pass@host:port/db)\n"
+             "Priorité la plus haute - override toutes les autres sources de configuration."
+    )
+    config_group.add_argument(
+        "--db-type",
+        type=str,
+        metavar="TYPE",
+        help="Type de base de données (postgresql, mysql, sqlite, etc.)\n"
+             "Utilisé uniquement avec --db-host, --db-user, --db-name"
+    )
+    config_group.add_argument(
+        "--db-host",
+        type=str,
+        metavar="HOST",
+        help="Hôte de la base de données (ex: localhost, 192.168.1.1)"
+    )
+    config_group.add_argument(
+        "--db-port",
+        type=int,
+        metavar="PORT",
+        help="Port de la base de données (ex: 5432 pour PostgreSQL, 3306 pour MySQL)"
+    )
+    config_group.add_argument(
+        "--db-user",
+        type=str,
+        metavar="USER",
+        help="Nom d'utilisateur pour la connexion"
+    )
+    config_group.add_argument(
+        "--db-password",
+        type=str,
+        metavar="PASSWORD",
+        help="Mot de passe pour la connexion"
+    )
+    config_group.add_argument(
+        "--db-name",
+        type=str,
+        metavar="NAME",
+        help="Nom de la base de données"
+    )
+    
     # --- Arguments existants ---
     parser.add_argument("--all", "-a", action="store_true", help="Afficher les détails de TOUTES les tables.")
     parser.add_argument("--table", "-t", type=str, help="Se concentrer sur une table spécifique pour voir son schéma.")
@@ -139,8 +206,43 @@ if __name__ == "__main__":
                              "⚠️  Cette action est IRRÉVERSIBLE.")
 
     args = parser.parse_args()
+    
+    # --- Gestion de la configuration avec priorité ---
+    # Priorité : Arguments CLI > Variables d'environnement > Fichier .env > Défaut
+    from app.core.config import Settings
+    
+    # Charger d'abord les settings par défaut (lit .env et variables d'environnement)
+    base_settings = Settings()
+    
+    # Préparer les overrides depuis les arguments CLI
+    config_overrides = {}
+    if args.database_url:
+        config_overrides['DATABASE_URL'] = args.database_url
+    if args.db_type:
+        config_overrides['DB_TYPE'] = args.db_type
+    if args.db_host:
+        config_overrides['DB_HOST'] = args.db_host
+    if args.db_port:
+        config_overrides['DB_PORT'] = args.db_port
+    if args.db_user:
+        config_overrides['DB_USER'] = args.db_user
+    if args.db_password:
+        config_overrides['DB_PASSWORD'] = args.db_password
+    if args.db_name:
+        config_overrides['DB_NAME'] = args.db_name
+    
+    # Créer une nouvelle instance de Settings avec les overrides CLI si fournis
+    if config_overrides:
+        # Fusionner les settings de base avec les overrides CLI
+        settings = Settings.model_validate({
+            **base_settings.model_dump(),
+            **config_overrides
+        })
+    else:
+        # Utiliser les settings de base (variables d'env ou .env)
+        settings = base_settings
 
-    engine = get_db_engine()
+    engine = get_db_engine(settings)
     if engine:
         all_details = get_table_details(engine)
         all_table_names = [t['table_name'] for t in all_details]
@@ -173,3 +275,7 @@ if __name__ == "__main__":
             for table_info in all_details:
                 logger.info(f"- {table_info['table_name']} ({table_info['row_count']} lignes)")
             logger.info("\nℹ️  Utilisez --help pour voir toutes les commandes.")
+
+
+if __name__ == "__main__":
+    main()
