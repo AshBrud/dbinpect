@@ -10,9 +10,33 @@ Exemple : python -m scripts.db_inspector --drop exams
 """
 import logging
 import argparse
+import sys
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from typing import List, Dict, Any, Optional
+
+# Import du module de couleurs
+try:
+    from app.utils.colors import (
+        format_cyan_bright, format_bright, format_cyan, 
+        format_yellow, format_dim, format_red, format_blue, format_green,
+        print_section, print_info, print_warning, print_error, print_success
+    )
+except ImportError:
+    # Fallback si le module n'est pas disponible
+    def format_cyan_bright(text): return text
+    def format_bright(text): return text
+    def format_cyan(text): return text
+    def format_yellow(text): return text
+    def format_dim(text): return text
+    def format_red(text): return text
+    def format_blue(text): return text
+    def format_green(text): return text
+    def print_section(text): print(text)
+    def print_info(text): print(f"ℹ️  {text}")
+    def print_warning(text): print(f"⚠️  {text}")
+    def print_error(text): print(f"❌ {text}")
+    def print_success(text): print(f"✅ {text}")
 
 # --- Configuration du Logging ---
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -43,22 +67,26 @@ def get_db_engine(custom_settings=None) -> Optional[Engine]:
     database_url = active_settings.get_database_url()
     
     if not database_url or database_url == "sqlite:///:memory:":
-        logger.error("❌ Erreur: DATABASE_URL n'est pas configuré.")
-        logger.error("💡 Options de configuration disponibles :")
-        logger.error("   1. Arguments CLI : --database-url ou --db-host, --db-user, --db-name")
-        logger.error("   2. Variables d'environnement : DATABASE_URL ou DB_HOST, DB_USER, DB_NAME")
-        logger.error("   3. Fichier .env : Créez un fichier .env à la racine du projet")
+        # Section 2.2 : Messages d'erreur de configuration colorés
+        print_error("Erreur: DATABASE_URL n'est pas configuré.")
+        print_info("Options de configuration disponibles :")
+        print(f"  1. Arguments CLI : {format_cyan('--database-url')} ou {format_cyan('--db-host')}, {format_cyan('--db-user')}, {format_cyan('--db-name')}")
+        print(f"  2. Variables d'environnement : {format_cyan('DATABASE_URL')} ou {format_cyan('DB_HOST')}, {format_cyan('DB_USER')}, {format_cyan('DB_NAME')}")
+        print(f"  3. Fichier .env : Créez un fichier {format_cyan('.env')} à la racine du projet")
         return None
         
-    logger.info(f"Connexion à la base de données via: {database_url}")
+    print(f"{format_dim('Connexion à la base de données via:')} {format_cyan(database_url)}")
     
     try:
         engine = create_engine(str(database_url)) # str() pour la compatibilité avec Pydantic
         with engine.connect():
-            logger.info("✅ Connexion à la base de données établie avec succès.\n")
+            # Section 2.2 : Message de succès de connexion coloré
+            print_success("Connexion à la base de données établie avec succès.")
+            print()  # Ligne vide
         return engine
     except Exception as e:
-        logger.error(f"❌ Impossible de se connecter à la base de données: {e}")
+        # Section 2.2 : Message d'erreur de connexion coloré
+        print_error(f"Impossible de se connecter à la base de données: {e}")
         return None
 
 def get_table_details(engine: Engine) -> List[Dict[str, Any]]:
@@ -84,23 +112,47 @@ def get_table_details(engine: Engine) -> List[Dict[str, Any]]:
 
 def print_table_schema(table: Dict[str, Any]):
     """Affiche le schéma formaté d'une seule table."""
-    logger.info(f"\n--- Table: {table['table_name']} ({table['row_count']} lignes) ---")
+    # Section 2.3 : Titre de table en cyan brillant
+    table_name = format_cyan_bright(table['table_name'])
+    row_count = format_dim(f"({table['row_count']} lignes)")
+    print(f"\n━━━ Table: {table_name} {row_count} ━━━")
     
-    logger.info("  Colonnes:")
+    # Section 2.3 : Section "Colonnes" en gras
+    print(f"  {format_bright('Colonnes:')}")
     for col in table['columns']:
-        col_info = f"{col['name']} ({col['type']})"
-        if not col['nullable']: col_info += " NOT NULL"
-        if col['name'] in table['primary_keys']: col_info += " [PK]"
-        logger.info(f"    - {col_info}")
+        # Nom de colonne en gras
+        col_name = format_bright(col['name'])
+        # Type en bleu
+        col_type = format_blue(str(col['type']))
+        col_info = f"{col_name} ({col_type})"
+        
+        # NOT NULL en rouge
+        if not col['nullable']:
+            col_info += f" {format_red('NOT NULL')}"
+        # [PK] en jaune
+        if col['name'] in table['primary_keys']:
+            col_info += f" {format_yellow('[PK]')}"
+        
+        print(f"    - {col_info}")
 
     if table['foreign_keys']:
-        logger.info("  Clés Étrangères:")
+        # Section 2.3 : Section "Foreign Keys" en gras
+        print(f"  {format_bright('Clés Étrangères:')}")
         for fk in table['foreign_keys']:
-            ref = f"{fk['referred_table']}({', '.join(fk['referred_columns'])})"
-            local = f"({', '.join(fk['constrained_columns'])})"
-            logger.info(f"    - {local} -> {ref}")
+            # Table référencée en vert
+            ref_table = format_green(fk['referred_table'])
+            ref_cols = ', '.join(fk['referred_columns'])
+            ref = f"{ref_table}({ref_cols})"
+            # Colonnes locales en gris
+            local_cols = ', '.join(fk['constrained_columns'])
+            local = format_dim(f"({local_cols})")
+            # Flèche en gris
+            arrow = format_dim("→")
+            print(f"    - {local} {arrow} {ref}")
     
-    logger.info("-" * (len(table['table_name']) + 22))
+    # Séparateur en gris
+    separator = format_dim("━" * (len(table['table_name']) + 22))
+    print(separator)
 
 def print_table_data(engine: Engine, table_name: str, limit: int):
     """Affiche les premières lignes de données d'une table."""
@@ -108,18 +160,31 @@ def print_table_data(engine: Engine, table_name: str, limit: int):
         result = connection.execute(text(f'SELECT * FROM "{table_name}" LIMIT {limit}'))
         rows = result.fetchall()
         if not rows:
-            logger.info(f"La table '{table_name}' est vide.")
+            # Section 2.4 : Message "table vide" en jaune
+            print_warning(f"La table '{table_name}' est vide.")
             return
             
-        logger.info(f"\n--- Données de la table: {table_name} (les {limit} premières lignes) ---")
+        # Section 2.4 : Titre en cyan brillant
+        title = format_cyan_bright(f"Données de la table: {table_name}")
+        subtitle = format_dim(f"(les {limit} premières lignes)")
+        print(f"\n━━━ {title} {subtitle} ━━━")
+        
         columns = result.keys()
+        # En-têtes de colonnes en gras
+        header = " | ".join(format_bright(str(col)) for col in columns)
+        print(header)
+        print(format_dim("─" * len(header)))
+        
         for row in rows:
             row_dict = dict(zip(columns, row))
-            logger.info(row_dict)
+            # Afficher les données avec formatage simple
+            row_str = " | ".join(str(val) if val is not None else format_dim("NULL") for val in row_dict.values())
+            print(row_str)
 
 def drop_table(engine: Engine, table_name: str):
     """Supprime une table de la base de données après confirmation."""
-    logger.warning(f"⚠️  ATTENTION: Vous êtes sur le point de supprimer DÉFINITIVEMENT la table '{table_name}'.")
+    # Section 2.5 : Avertissement en jaune brillant
+    print_warning(f"ATTENTION: Vous êtes sur le point de supprimer DÉFINITIVEMENT la table '{format_cyan_bright(table_name)}'.")
     confirmation = input("Êtes-vous sûr de vouloir continuer? (oui/non): ")
 
     if confirmation.lower() == 'oui':
@@ -129,50 +194,90 @@ def drop_table(engine: Engine, table_name: str):
                 trans = connection.begin()
                 connection.execute(text(f'DROP TABLE "{table_name}"'))
                 trans.commit()
-            logger.info(f"✅ La table '{table_name}' a été supprimée avec succès.")
+            # Section 2.5 : Message de succès en vert
+            print_success(f"La table '{table_name}' a été supprimée avec succès.")
         except Exception as e:
-            logger.error(f"❌ Erreur lors de la suppression de la table '{table_name}': {e}")
+            # Section 2.5 : Message d'erreur en rouge
+            print_error(f"Erreur lors de la suppression de la table '{table_name}': {e}")
     else:
-        logger.info("Opération annulée.")
+        # Section 2.5 : Message d'annulation en gris
+        print(f"{format_dim('Opération annulée.')}")
+
+class ColoredHelpFormatter(argparse.RawTextHelpFormatter):
+    """Formatter personnalisé qui ajoute des couleurs à l'aide."""
+    
+    def _format_action_invocation(self, action):
+        """Colore les noms d'options et arguments."""
+        if not action.option_strings:
+            # Argument positionnel
+            return format_cyan_bright(super()._format_action_invocation(action))
+        
+        # Options avec couleurs
+        parts = []
+        for option_string in action.option_strings:
+            if option_string.startswith('--'):
+                # Longue option en cyan brillant
+                parts.append(format_cyan_bright(option_string))
+            else:
+                # Option courte en cyan
+                parts.append(format_cyan(option_string))
+        
+        return ', '.join(parts)
+    
+    def _format_text(self, text):
+        """Colore certaines parties du texte d'aide."""
+        # Le texte peut déjà contenir des codes de couleur, on le laisse tel quel
+        return super()._format_text(text)
+
 
 def main():
     """Point d'entrée principal de la commande analyze-db."""
     parser = argparse.ArgumentParser(
-        description="Inspecteur de base de données - Analyse et inspection de bases de données.",
-        formatter_class=argparse.RawTextHelpFormatter
+        description=format_cyan_bright("🗂️  DB Inspector") + "\n\n" +
+                    "Analyse et inspection de bases de données compatibles SQLAlchemy.\n" +
+                    format_dim("Visualisez la structure de vos tables, consultez les données,\n") +
+                    format_dim("analysez les relations et gérez votre schéma de base de données."),
+        formatter_class=ColoredHelpFormatter,
+        epilog=format_dim("\n💡 Pour plus d'informations, visitez: https://github.com/AshBrud/dbinpect")
     )
     
     # --- Arguments de configuration de la base de données ---
     config_group = parser.add_argument_group(
-        'Configuration de la base de données',
-        'Ces options permettent de configurer la connexion directement en CLI.\n'
-        'Priorité : Arguments CLI > Variables d\'environnement > Fichier .env > Défaut'
+        format_bright('⚙️  Configuration de la base de données'),
+        format_dim('Ces options permettent de configurer la connexion directement en CLI.\n') +
+        format_dim('Priorité : ') + format_yellow('Arguments CLI') + format_dim(' > ') + 
+        format_cyan('Variables d\'environnement') + format_dim(' > ') +
+        format_cyan('Fichier .env') + format_dim(' > Défaut')
     )
     config_group.add_argument(
         "--database-url", "--db-url", "-u",
         type=str,
         metavar="URL",
-        help="URL complète de la base de données (ex: postgresql://user:pass@host:port/db)\n"
-             "Priorité la plus haute - override toutes les autres sources de configuration."
+        help=format_bright("URL complète de la base de données") + 
+             " (ex: " + format_dim("postgresql://user:pass@host:port/db") + ")\n" +
+             format_yellow("Priorité la plus haute") + " - override toutes les autres sources de configuration."
     )
     config_group.add_argument(
         "--db-type",
         type=str,
         metavar="TYPE",
-        help="Type de base de données (postgresql, mysql, sqlite, etc.)\n"
-             "Utilisé uniquement avec --db-host, --db-user, --db-name"
+        help="Type de base de données (" + format_cyan("postgresql") + ", " + 
+             format_cyan("mysql") + ", " + format_cyan("sqlite") + ", etc.)\n" +
+             format_dim("Utilisé uniquement avec --db-host, --db-user, --db-name")
     )
     config_group.add_argument(
         "--db-host",
         type=str,
         metavar="HOST",
-        help="Hôte de la base de données (ex: localhost, 192.168.1.1)"
+        help="Hôte de la base de données (ex: " + format_dim("localhost") + ", " + 
+             format_dim("192.168.1.1") + ")"
     )
     config_group.add_argument(
         "--db-port",
         type=int,
         metavar="PORT",
-        help="Port de la base de données (ex: 5432 pour PostgreSQL, 3306 pour MySQL)"
+        help="Port de la base de données (ex: " + format_dim("5432") + " pour PostgreSQL, " + 
+             format_dim("3306") + " pour MySQL)"
     )
     config_group.add_argument(
         "--db-user",
@@ -193,17 +298,40 @@ def main():
         help="Nom de la base de données"
     )
     
-    # --- Arguments existants ---
-    parser.add_argument("--all", "-a", action="store_true", help="Afficher les détails de TOUTES les tables.")
-    parser.add_argument("--table", "-t", type=str, help="Se concentrer sur une table spécifique pour voir son schéma.")
-    parser.add_argument("--data", "-d", nargs='?', type=int, const=10, default=None,
-                        help="Afficher les données de la table spécifiée (nécessite --table).\n"
-                             "Par défaut, 10 lignes sont affichées. Spécifiez un nombre (ex: --data 50).")
+    # --- Arguments d'inspection ---
+    parser.add_argument(
+        "--all", "-a", 
+        action="store_true", 
+        help=format_bright("Afficher les détails de TOUTES les tables.") + 
+             "\n" + format_dim("Affiche le schéma complet (colonnes, types, clés) de chaque table.")
+    )
+    parser.add_argument(
+        "--table", "-t", 
+        type=str, 
+        metavar="TABLE",
+        help="Se concentrer sur une table spécifique pour voir son schéma.\n" +
+             format_dim("Affiche les colonnes, types, clés primaires et étrangères.")
+    )
+    parser.add_argument(
+        "--data", "-d", 
+        nargs='?', 
+        type=int, 
+        const=10, 
+        default=None,
+        help="Afficher les données de la table spécifiée " + format_yellow("(nécessite --table)") + ".\n" +
+             format_dim("Par défaut, ") + format_bright("10") + format_dim(" lignes sont affichées. ") +
+             format_dim("Spécifiez un nombre (ex: ") + format_cyan("--data 50") + format_dim(").")
+    )
     
-    # --- NOUVEL ARGUMENT POUR SUPPRIMER UNE TABLE ---
-    parser.add_argument("--drop", type=str, metavar="TABLE_NAME",
-                        help="Supprime une table spécifique de la base de données.\n"
-                             "⚠️  Cette action est IRRÉVERSIBLE.")
+    # --- Argument pour supprimer une table ---
+    parser.add_argument(
+        "--drop", 
+        type=str, 
+        metavar="TABLE_NAME",
+        help=format_yellow("⚠️  Supprime une table spécifique de la base de données.\n") +
+             format_red("Cette action est IRRÉVERSIBLE.") + 
+             format_dim(" Une confirmation sera demandée.")
+    )
 
     args = parser.parse_args()
     
@@ -252,10 +380,10 @@ def main():
             if args.drop in all_table_names:
                 drop_table(engine, args.drop)
             else:
-                logger.error(f"❌ Table '{args.drop}' non trouvée. Tables disponibles: {all_table_names}")
+                print_error(f"Table '{args.drop}' non trouvée. Tables disponibles: {all_table_names}")
 
         elif not all_details:
-            logger.warning("Aucune table trouvée dans la base de données.")
+            print_warning("Aucune table trouvée dans la base de données.")
         
         elif args.table:
             target_table = next((t for t in all_details if t['table_name'] == args.table), None)
@@ -264,17 +392,21 @@ def main():
                 if args.data is not None:
                     print_table_data(engine, args.table, limit=args.data)
             else:
-                logger.error(f"Table '{args.table}' non trouvée.")
+                print_error(f"Table '{args.table}' non trouvée.")
         
         elif args.all:
             for table_info in all_details:
                 print_table_schema(table_info)
         
         else:
-            logger.info("Tables disponibles dans la base de données:")
+            # Section 2.6 : Liste des tables avec couleurs
+            print_section("Tables disponibles dans la base de données:")
             for table_info in all_details:
-                logger.info(f"- {table_info['table_name']} ({table_info['row_count']} lignes)")
-            logger.info("\nℹ️  Utilisez --help pour voir toutes les commandes.")
+                table_name = format_cyan_bright(table_info['table_name'])
+                row_count = format_dim(f"({table_info['row_count']} lignes)")
+                print(f"  - {table_name} {row_count}")
+            print()  # Ligne vide
+            print_info("Utilisez --help pour voir toutes les commandes.")
 
 
 if __name__ == "__main__":
