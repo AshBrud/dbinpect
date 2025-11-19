@@ -1,0 +1,178 @@
+# This workflow will upload a Python Package to TestPyPI/PyPI when a release is created
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+
+name: Upload Python Package to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build release distributions
+        run: |
+          python -m build
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+  testpypi-publish:
+    runs-on: ubuntu-latest
+    needs:
+      - release-build
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+      contents: write
+      issues: write
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/dbinpect/${{ github.event.release.tag_name }}
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Publish release distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: TestPyPI publication successful
+        run: |
+          echo "✅ Package published to TestPyPI: https://test.pypi.org/project/dbinpect/${{ github.event.release.tag_name }}"
+          echo "📋 Please test the package before approving PyPI publication:"
+          echo "   pip install --index-url https://test.pypi.org/simple/ --no-deps dbinpect"
+          echo "⏳ Waiting for manual approval to publish to PyPI..."
+
+      - name: Notify approval required
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testpypiUrl = `https://test.pypi.org/project/dbinpect/${{ github.event.release.tag_name }}`;
+            const workflowUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const releaseUrl = `https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}`;
+            
+            // Créer une issue pour une notification visible
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔔 Approbation requise : Publication PyPI pour ${{ github.event.release.tag_name }}`,
+              body: `## ⏸️ Publication sur TestPyPI réussie - Approbation requise
+            
+            ✅ **Package publié sur TestPyPI** : [${testpypiUrl}](${testpypiUrl})
+            
+            📋 **Prochaines étapes** :
+            
+            1. **Tester le package** depuis TestPyPI :
+               \`\`\`bash
+               pip install --index-url https://test.pypi.org/simple/ --no-deps dbinpect
+               pip install colorama SQLAlchemy pydantic pydantic-settings python-dotenv
+               analyze-db --help
+               \`\`\`
+            
+            2. **Approuver la publication sur PyPI** :
+               - Allez dans [Actions](${workflowUrl})
+               - Cliquez sur "Review deployments" pour l'environnement \`pypi\`
+               - Cliquez sur "Approve and deploy"
+            
+            ⏳ Le workflow attend votre approbation pour publier sur PyPI.
+            
+            📌 **Release** : [${releaseUrl}](${releaseUrl})
+            
+            ---
+            *Cette issue sera automatiquement fermée après la publication sur PyPI.*`,
+              labels: ['pypi-approval', 'notification']
+            });
+            
+            console.log(`✅ Notification issue créée : #${issue.number}`);
+
+  pypi-publish:
+    runs-on: ubuntu-latest
+    needs:
+      - testpypi-publish
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+      contents: write
+      issues: write
+    environment:
+      name: pypi
+      url: https://pypi.org/project/dbinpect/${{ github.event.release.tag_name }}
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Publish release distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+      - name: PyPI publication successful
+        run: |
+          echo "✅ Package published to PyPI: https://pypi.org/project/dbinpect/${{ github.event.release.tag_name }}"
+
+      - name: Close approval notification issue
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            // Trouver et fermer l'issue de notification créée précédemment
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'pypi-approval',
+              per_page: 10
+            });
+            
+            const approvalIssue = issues.find(issue => 
+              issue.title.includes('${{ github.event.release.tag_name }}')
+            );
+            
+            if (approvalIssue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: approvalIssue.number,
+                body: `✅ **Publication sur PyPI réussie !**
+                
+                Le package a été publié avec succès sur PyPI : https://pypi.org/project/dbinpect/${{ github.event.release.tag_name }}
+                
+                Cette issue est maintenant fermée.`
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: approvalIssue.number,
+                state: 'closed'
+              });
+            }

@@ -13,6 +13,7 @@ Visualize your table structures, browse data, analyze relationships, and manage 
 - 🗑️ **Management** : Delete tables if needed (with confirmation)
 - 🎯 **Multi-database** : Support for PostgreSQL, MySQL, SQLite and all SQLAlchemy-compatible databases
 - ⚙️ **Flexible Configuration** : Full URL or separate variables
+- 🎨 **Colorful Output** : Enhanced readability with color-coded information (table names, types, keys, errors, warnings)
 
 ---
 
@@ -255,6 +256,32 @@ analyze-db --drop old_table
 
 ---
 
+## 🎨 Color-Coded Output
+
+DB Inspector uses colors to make the output more readable and easier to analyze:
+
+### Color Scheme
+
+- **Cyan Bright** : Table names, titles, and important identifiers
+- **Bold** : Section headers, column names, and emphasis
+- **Blue** : Data types (INTEGER, VARCHAR, TEXT, etc.)
+- **Yellow** : Primary keys `[PK]`
+- **Red** : `NOT NULL` constraints and error messages
+- **Green** : Referenced tables in foreign keys and success messages
+- **Gray (Dim)** : Secondary information (row counts, separators, hints)
+- **Yellow Bright** : Warnings and important alerts
+
+### Examples
+
+- **Table schemas** : Column names in bold, types in blue, constraints in red/yellow
+- **Foreign keys** : Referenced tables in green with gray arrows
+- **Messages** : Success (green), errors (red), warnings (yellow), info (cyan)
+- **Help command** : Color-coded options and descriptions
+
+> 💡 **Note** : Colors are automatically handled by Colorama for cross-platform compatibility. If your terminal doesn't support colors, the output will still be readable without them.
+
+---
+
 ## 🛠️ Development
 
 ### Project Structure
@@ -264,19 +291,18 @@ dbinpect/
 │
 ├── app/
 │   ├── __init__.py
-│   └── core/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── config.py          # Configuration with Pydantic Settings
+│   └── utils/
 │       ├── __init__.py
-│       └── config.py          # Configuration with Pydantic Settings
+│       └── colors.py           # Color formatting utilities
 │
 ├── scripts/
 │   └── db_inspector.py        # Main script
 │
-├── docs/
-│   └── plan-action-configurations-base.md
-│
 ├── .env.example               # Configuration example
 ├── requirements.txt           # Python dependencies
-├── setup.py                   # Package configuration
 ├── pyproject.toml             # Modern package configuration
 └── README.md                  # This file
 ```
@@ -286,6 +312,7 @@ dbinpect/
 - **SQLAlchemy** : ORM and database connection management
 - **Pydantic** : Data validation and configuration management
 - **Python-dotenv** : Environment variable loading
+- **Colorama** : Cross-platform colored terminal output (Windows/Linux/Mac)
 
 ### Development Dependencies Installation
 
@@ -330,7 +357,7 @@ Contributions are welcome! To contribute:
 
 ### Future Improvements
 
-See the [action plan](docs/plan-action-configurations-base.md) to view planned improvements.
+Future improvements and features are planned. Check the GitHub repository for updates.
 
 ---
 

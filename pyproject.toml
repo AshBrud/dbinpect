@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dbinpect"
-version = "0.1.2"
+version = "0.2.1"
 description = "Outil d'inspection et d'analyse de bases de données"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -29,6 +29,7 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
+    "colorama>=0.4.6",
 ]
 
 [project.urls]
