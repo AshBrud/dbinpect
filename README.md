@@ -1,134 +1,142 @@
 # 🗂️ DB Inspector
 
-Un outil puissant et flexible pour inspecter et analyser n'importe quelle base de données compatible avec SQLAlchemy.  
-Visualisez la structure de vos tables, consultez les données, analysez les relations et gérez votre schéma de base de données directement depuis la ligne de commande.
+A powerful and flexible tool to inspect and analyze any SQLAlchemy-compatible database.  
+Visualize your table structures, browse data, analyze relationships, and manage your database schema directly from the command line.
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-- 🔍 **Inspection complète** : Analysez la structure de toutes vos tables
-- 📊 **Visualisation des données** : Consultez le contenu de vos tables
-- 🔗 **Relations** : Découvrez les clés étrangères et les relations entre tables
-- 🗑️ **Gestion** : Supprimez des tables si nécessaire (avec confirmation)
-- 🎯 **Multi-bases** : Support de PostgreSQL, MySQL, SQLite et toutes les bases compatibles SQLAlchemy
-- ⚙️ **Configuration flexible** : URL complète ou variables séparées
+- 🔍 **Complete Inspection** : Analyze the structure of all your tables
+- 📊 **Data Visualization** : Browse the content of your tables
+- 🔗 **Relationships** : Discover foreign keys and relationships between tables
+- 🗑️ **Management** : Delete tables if needed (with confirmation)
+- 🎯 **Multi-database** : Support for PostgreSQL, MySQL, SQLite and all SQLAlchemy-compatible databases
+- ⚙️ **Flexible Configuration** : Full URL or separate variables
 
 ---
 
-## 📋 Prérequis
+## 📋 Prerequisites
 
-- Python 3.8 ou supérieur
-- Accès à une base de données (PostgreSQL, MySQL, SQLite, etc.)
+- Python 3.8 or higher
+- Access to a database (PostgreSQL, MySQL, SQLite, etc.)
 
 ---
 
 ## 🚀 Installation
 
-### Installation depuis le code source
-
-Clonez le projet et installez les dépendances :
+### Installation from PyPI
 
 ```bash
-git clone https://github.com/<ton-user>/dbinpect.git
+pip install dbinpect
+```
+
+This will install the `analyze-db` command in your environment.
+
+### Installation from Source
+
+Clone the project and install dependencies:
+
+```bash
+git clone https://github.com/AshBrud/dbinpect.git
 cd dbinpect
 pip install -r requirements.txt
 ```
 
-### Installation en mode développement
+### Development Installation
 
-Pour installer le package en mode développement (utile si vous modifiez le code) :
+To install the package in development mode (useful if you modify the code):
 
 ```bash
 pip install -e .
 ```
 
-Cela installera également la commande `analyze-db` dans votre environnement.
+This will also install the `analyze-db` command in your environment.
 
-### Installation depuis PyPI (à venir)
+### Installation from GitHub
 
 ```bash
-pip install db-inspector
+pip install git+https://github.com/AshBrud/dbinpect.git
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-Le projet offre **trois méthodes** pour configurer la connexion à la base de données, avec un ordre de priorité clair :
+The project offers **three methods** to configure the database connection, with a clear priority order:
 
-**Ordre de priorité** : Arguments CLI > Variables d'environnement > Fichier `.env` > Défaut
+**Priority order** : CLI Arguments > Environment Variables > `.env` File > Default
 
-### Méthode 1 : Arguments CLI (Priorité la plus haute) ⭐
+### Method 1: CLI Arguments (Highest Priority) ⭐
 
-Configurez directement depuis la ligne de commande :
+Configure directly from the command line:
 
 ```bash
-# Avec URL complète
-analyze-db --database-url "postgresql://user:password@localhost:5432/ma_base" --all
+# With full URL
+analyze-db --database-url "postgresql://user:password@localhost:5432/mydb" --all
 
-# Avec variables séparées
-analyze-db --db-host localhost --db-port 5432 --db-user user --db-password pass --db-name ma_base --all
+# With separate variables
+analyze-db --db-host localhost --db-port 5432 --db-user user --db-password pass --db-name mydb --all
 
-# Mixte : override partiel
+# Mixed: partial override
 analyze-db --db-password "new_password" --all
 ```
 
-**Arguments disponibles** :
-- `--database-url`, `--db-url`, `-u` : URL complète de la base de données
-- `--db-type` : Type de base (postgresql, mysql, sqlite, etc.)
-- `--db-host` : Hôte de la base de données
-- `--db-port` : Port de la base de données
-- `--db-user` : Nom d'utilisateur
-- `--db-password` : Mot de passe
-- `--db-name` : Nom de la base de données
+**Available arguments** :
+- `--database-url`, `--db-url`, `-u` : Full database URL
+- `--db-type` : Database type (postgresql, mysql, sqlite, etc.)
+- `--db-host` : Database host
+- `--db-port` : Database port
+- `--db-user` : Username
+- `--db-password` : Password
+- `--db-name` : Database name
 
-### Méthode 2 : Variables d'environnement
+### Method 2: Environment Variables
 
-Définissez les variables dans votre shell avant d'exécuter la commande :
+Set variables in your shell before executing the command:
 
 ```bash
 # Linux/Mac/Windows Git Bash
-DATABASE_URL="postgresql://user:password@localhost:5432/ma_base" analyze-db --all
+DATABASE_URL="postgresql://user:password@localhost:5432/mydb" analyze-db --all
 
-# Ou exportez pour la session
-export DATABASE_URL="postgresql://user:password@localhost:5432/ma_base"
+# Or export for the session
+export DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 analyze-db --all
 
-# Variables séparées
-DB_HOST=localhost DB_USER=user DB_NAME=ma_base analyze-db --all
+# Separate variables
+DB_HOST=localhost DB_USER=user DB_NAME=mydb analyze-db --all
 ```
 
 **Windows PowerShell** :
 ```powershell
-$env:DATABASE_URL="postgresql://user:password@localhost:5432/ma_base"
+$env:DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 analyze-db --all
 ```
 
 **Windows CMD** :
 ```cmd
-set DATABASE_URL=postgresql://user:password@localhost:5432/ma_base
+set DATABASE_URL=postgresql://user:password@localhost:5432/mydb
 analyze-db --all
 ```
 
-### Méthode 3 : Fichier `.env` (Pour développement local)
+### Method 3: `.env` File (For Local Development)
 
-Créez un fichier `.env` à la racine du projet :
+Create a `.env` file at the project root:
 
 ```env
-# Option 1 : URL complète
-DATABASE_URL=postgresql://user:password@localhost:5432/ma_base
+# Option 1: Full URL
+DATABASE_URL=postgresql://user:password@localhost:5432/mydb
 
-# Option 2 : Variables séparées
+# Option 2: Separate variables
 DB_TYPE=postgresql
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=user
 DB_PASSWORD=password
-DB_NAME=ma_base
+DB_NAME=mydb
 ```
 
-**Créer le fichier** :
+**Create the file** :
 ```bash
 # Linux/Mac
 cp env.example .env
@@ -137,119 +145,119 @@ cp env.example .env
 copy env.example .env
 ```
 
-Puis éditez le fichier `.env` avec vos informations de connexion.
+Then edit the `.env` file with your connection information.
 
-### Types de bases de données supportées
+### Supported Database Types
 
 - **PostgreSQL** : `postgresql://user:pass@host:port/db`
 - **MySQL** : `mysql://user:pass@host:port/db`
 - **SQLite** : `sqlite:///path/to/database.db`
-- **Autres** : Toutes les bases de données supportées par SQLAlchemy
+- **Others** : All databases supported by SQLAlchemy
 
-### Exemples de configuration
+### Configuration Examples
 
 ```bash
 # PostgreSQL via CLI
 analyze-db --database-url "postgresql://postgres:mypass@localhost:5432/testdb" --all
 
-# MySQL via variables d'environnement
+# MySQL via environment variables
 DATABASE_URL="mysql://root:password@localhost:3306/mydb" analyze-db --table users
 
 # SQLite via CLI
 analyze-db --database-url "sqlite:///./database.db" --all
 
-# Override partiel : .env contient DB_HOST, DB_USER, DB_NAME, on override juste le mot de passe
+# Partial override: .env contains DB_HOST, DB_USER, DB_NAME, override only password
 analyze-db --db-password "new_password" --all
 ```
 
-> 💡 **Note** : Si `DATABASE_URL` est défini (via CLI, env ou .env), il a la priorité sur les variables séparées.
+> 💡 **Note** : If `DATABASE_URL` is defined (via CLI, env or .env), it takes priority over separate variables.
 
 ---
 
-## 📖 Utilisation
+## 📖 Usage
 
-Une fois installé, vous pouvez utiliser la commande `analyze-db` :
+Once installed, you can use the `analyze-db` command:
 
 ```bash
 analyze-db --help
 ```
 
-### Options disponibles
+### Available Options
 
-#### Options d'inspection
-
-| Option | Description |
-|--------|-------------|
-| `--all`, `-a` | Affiche les détails de toutes les tables |
-| `--table <nom>`, `-t <nom>` | Affiche le schéma d'une table spécifique |
-| `--data [n]`, `-d [n]` | Affiche les premières lignes de données (par défaut 10) |
-| `--drop <nom>` | Supprime une table spécifique ⚠️ **irréversible** |
-
-#### Options de configuration (voir section Configuration)
+#### Inspection Options
 
 | Option | Description |
 |--------|-------------|
-| `--database-url`, `--db-url`, `-u` | URL complète de la base de données |
-| `--db-host` | Hôte de la base de données |
-| `--db-port` | Port de la base de données |
-| `--db-user` | Nom d'utilisateur |
-| `--db-password` | Mot de passe |
-| `--db-name` | Nom de la base de données |
-| `--db-type` | Type de base (postgresql, mysql, sqlite, etc.) |
+| `--all`, `-a` | Display details of all tables |
+| `--table <name>`, `-t <name>` | Display the schema of a specific table |
+| `--data [n]`, `-d [n]` | Display the first rows of data (default 10) |
+| `--drop <name>` | Delete a specific table ⚠️ **irreversible** |
 
-### Exemples d'utilisation
+#### Configuration Options (see Configuration section)
 
-#### Lister toutes les tables
+| Option | Description |
+|--------|-------------|
+| `--database-url`, `--db-url`, `-u` | Full database URL |
+| `--db-host` | Database host |
+| `--db-port` | Database port |
+| `--db-user` | Username |
+| `--db-password` | Password |
+| `--db-name` | Database name |
+| `--db-type` | Database type (postgresql, mysql, sqlite, etc.) |
+
+### Usage Examples
+
+#### List all tables
 
 ```bash
 analyze-db
 ```
 
-Affiche la liste de toutes les tables avec le nombre de lignes.
+Displays the list of all tables with the number of rows.
 
-#### Afficher les détails de toutes les tables
+#### Display details of all tables
 
 ```bash
 analyze-db --all
 ```
 
-Affiche le schéma complet (colonnes, types, clés primaires, clés étrangères) de toutes les tables.
+Displays the complete schema (columns, types, primary keys, foreign keys) of all tables.
 
-#### Inspecter une table spécifique
+#### Inspect a specific table
 
 ```bash
 analyze-db --table users
 ```
 
-Affiche le schéma détaillé de la table `users` :
-- Colonnes avec leurs types
-- Clés primaires
-- Clés étrangères
-- Nombre de lignes
+Displays the detailed schema of the `users` table:
+- Columns with their types
+- Primary keys
+- Foreign keys
+- Number of rows
 
-#### Consulter les données d'une table
+#### Browse table data
 
 ```bash
-# Afficher les 10 premières lignes (par défaut)
+# Display the first 10 rows (default)
 analyze-db --table users --data
 
-# Afficher les 20 premières lignes
+# Display the first 20 rows
 analyze-db --table users --data 20
 ```
 
-#### Supprimer une table
+#### Delete a table
 
 ```bash
 analyze-db --drop old_table
 ```
 
-⚠️ **Attention** : Cette action est irréversible. Une confirmation vous sera demandée avant la suppression.
+⚠️ **Warning** : This action is irreversible. A confirmation will be requested before deletion.
 
 ---
 
-## 🛠️ Développement
+## 🛠️ Development
 
-### Structure du projet
+### Project Structure
 
 ```
 dbinpect/
@@ -258,27 +266,28 @@ dbinpect/
 │   ├── __init__.py
 │   └── core/
 │       ├── __init__.py
-│       └── config.py          # Configuration avec Pydantic Settings
+│       └── config.py          # Configuration with Pydantic Settings
 │
 ├── scripts/
-│   └── db_inspector.py        # Script principal
+│   └── db_inspector.py        # Main script
 │
 ├── docs/
 │   └── plan-action-configurations-base.md
 │
-├── .env.example               # Exemple de configuration
-├── requirements.txt           # Dépendances Python
-├── setup.py                   # Configuration du package
-└── README.md                  # Ce fichier
+├── .env.example               # Configuration example
+├── requirements.txt           # Python dependencies
+├── setup.py                   # Package configuration
+├── pyproject.toml             # Modern package configuration
+└── README.md                  # This file
 ```
 
-### Technologies utilisées
+### Technologies Used
 
-- **SQLAlchemy** : ORM et gestion des connexions aux bases de données
-- **Pydantic** : Validation et gestion de la configuration
-- **Python-dotenv** : Chargement des variables d'environnement
+- **SQLAlchemy** : ORM and database connection management
+- **Pydantic** : Data validation and configuration management
+- **Python-dotenv** : Environment variable loading
 
-### Installation des dépendances de développement
+### Development Dependencies Installation
 
 ```bash
 pip install -r requirements.txt
@@ -286,65 +295,65 @@ pip install -r requirements.txt
 
 ---
 
-## 🐛 Dépannage
+## 🐛 Troubleshooting
 
-### Erreur : "DATABASE_URL n'est pas configuré"
+### Error: "DATABASE_URL is not configured"
 
-**Solution** : Vérifiez que votre fichier `.env` existe et contient `DATABASE_URL` ou les variables `DB_HOST`, `DB_USER`, `DB_NAME`.
+**Solution** : Check that your `.env` file exists and contains `DATABASE_URL` or the variables `DB_HOST`, `DB_USER`, `DB_NAME`.
 
-### Erreur : "Impossible de se connecter à la base de données"
+### Error: "Unable to connect to database"
 
 **Solutions** :
-1. Vérifiez que votre base de données est accessible
-2. Vérifiez les identifiants dans votre fichier `.env`
-3. Vérifiez que le service de base de données est démarré
-4. Pour PostgreSQL, vérifiez que le port 5432 est ouvert
+1. Check that your database is accessible
+2. Verify credentials in your `.env` file
+3. Check that the database service is running
+4. For PostgreSQL, verify that port 5432 is open
 
-### La commande `analyze-db` n'est pas trouvée
+### Command `analyze-db` not found
 
-**Solution** : Réinstallez le package en mode développement :
+**Solution** : Reinstall the package in development mode:
 ```bash
 pip install -e .
 ```
 
 ---
 
-## 🤝 Contribution
+## 🤝 Contributing
 
-Les contributions sont les bienvenues ! Pour contribuer :
+Contributions are welcome! To contribute:
 
-1. **Forkez** le repository
-2. **Créez** une branche pour votre fonctionnalité (`git checkout -b feature/ma-fonction`)
-3. **Commitez** vos modifications (`git commit -m 'Ajout d'une nouvelle fonctionnalité'`)
-4. **Poussez** vers la branche (`git push origin feature/ma-fonction`)
-5. **Ouvrez** une Pull Request
+1. **Fork** the repository
+2. **Create** a branch for your feature (`git checkout -b feature/my-feature`)
+3. **Commit** your changes (`git commit -m 'Add a new feature'`)
+4. **Push** to the branch (`git push origin feature/my-feature`)
+5. **Open** a Pull Request
 
-### Améliorations futures
+### Future Improvements
 
-Consultez le [plan d'action](docs/plan-action-configurations-base.md) pour voir les améliorations prévues.
-
----
-
-## 📜 Licence
-
-Ce projet est sous licence MIT. Vous êtes libres de l'utiliser, le modifier et le partager.
-
-Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+See the [action plan](docs/plan-action-configurations-base.md) to view planned improvements.
 
 ---
 
-## 🙏 Remerciements
+## 📜 License
 
-- [SQLAlchemy](https://www.sqlalchemy.org/) pour l'excellent ORM
-- [Pydantic](https://docs.pydantic.dev/) pour la validation de données
-- Tous les contributeurs qui améliorent ce projet
+This project is licensed under the MIT License. You are free to use, modify, and share it.
+
+See the [LICENSE](LICENSE) file for more details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [SQLAlchemy](https://www.sqlalchemy.org/) for the excellent ORM
+- [Pydantic](https://docs.pydantic.dev/) for data validation
+- All contributors who improve this project
 
 ---
 
 ## 📞 Support
 
-Pour signaler un bug ou proposer une fonctionnalité, ouvrez une [issue](https://github.com/<ton-user>/dbinpect/issues) sur GitHub.
+To report a bug or suggest a feature, open an [issue](https://github.com/AshBrud/dbinpect/issues) on GitHub.
 
 ---
 
-**Fait avec ❤️ pour la communauté Python**
+**Made with ❤️ for the Python community**
